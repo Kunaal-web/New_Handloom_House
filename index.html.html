@@ -1,0 +1,183 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Handloom Slot — Win 20% Off!</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#f59e0b;--muted:#94a3b8}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#071028 0%, #0d1723 100%);color:#fff}
+    .container{width:360px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(2,6,23,0.6)}
+    h1{font-size:18px;margin:0 0 12px 0;text-align:center}
+    .machine{background:var(--card);padding:16px;border-radius:12px}
+    .reels{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
+    .reel{width:76px;height:76px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:40px;box-shadow:inset 0 -6px 20px rgba(0,0,0,0.6)}
+    .controls{display:flex;gap:8px;justify-content:center}
+    button{background:var(--accent);border:0;padding:10px 14px;border-radius:10px;color:#081018;font-weight:700;cursor:pointer}
+    button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);font-weight:600}
+    .message{margin-top:12px;text-align:center;color:var(--muted);font-size:14px}
+    .winbox{margin-top:12px;padding:12px;border-radius:10px;background:linear-gradient(90deg,rgba(245,158,11,0.12),rgba(245,158,11,0.06));color:#fff;text-align:center;display:none}
+    .code{font-weight:900;margin-top:8px;background:rgba(255,255,255,0.03);padding:8px;border-radius:8px}
+    .small{font-size:12px;color:var(--muted)}
+    .confetti{position:fixed;left:0;right:0;top:0;pointer-events:none}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Handloom Lucky Spin — Win Flat <span style="color:var(--accent)">20% OFF</span>!</h1>
+    <div class="machine">
+      <div class="reels" aria-hidden="false">
+        <div id="reel1" class="reel">🧵</div>
+        <div id="reel2" class="reel">🧵</div>
+        <div id="reel3" class="reel">🧵</div>
+      </div>
+      <div class="controls">
+        <button id="spinBtn">SPIN</button>
+        <button id="autoBtn" class="secondary">Auto-spin</button>
+        <button id="resetBtn" class="secondary">Reset</button>
+      </div>
+      <div class="message">Win to reveal a flat <strong>20% off</strong> promo code on our handlooms.</div>
+      <div id="winbox" class="winbox" role="status">
+        <div style="font-size:16px;font-weight:800">You won!</div>
+        <div class="small">Use this at checkout for flat <strong>20% OFF</strong> on handlooms.</div>
+        <div class="code" id="promo">HANDLOOM20</div>
+        <div style="margin-top:8px;display:flex;gap:8px;justify-content:center">
+          <button id="copyBtn">Copy code</button>
+          <button id="shopBtn" class="secondary">Shop handlooms</button>
+        </div>
+      </div>
+    </div>
+    <div class="small" style="text-align:center;margin-top:10px">This demo intentionally always lands on a win (for advertising/demo purposes).</div>
+  </div><canvas id="confetti" class="confetti" width="400" height="200" style="display:none"></canvas>
+
+  <script>
+    // Simple rigged slot machine — always wins.
+    const symbols = ['🧵','🧶','🪢','🪡','🪢','🧵','🧶'];
+    const winningSymbol = '🧵'; // symbol that indicates a win
+    const reelEls = [document.getElementById('reel1'), document.getElementById('reel2'), document.getElementById('reel3')];
+    const spinBtn = document.getElementById('spinBtn');
+    const autoBtn = document.getElementById('autoBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const winbox = document.getElementById('winbox');
+    const promo = document.getElementById('promo');
+    const copyBtn = document.getElementById('copyBtn');
+    const shopBtn = document.getElementById('shopBtn');
+
+    let spinning = false;
+    let auto = false;
+    let spinIntervalIds = [];
+
+    function randomSymbol(){ return symbols[Math.floor(Math.random()*symbols.length)]; }
+
+    function animateReels(duration = 1200){
+      if(spinning) return;
+      spinning = true;
+      winbox.style.display = 'none';
+      // visually cycle symbols quickly
+      reelEls.forEach((el, i) => {
+        let t = 0;
+        const id = setInterval(()=>{
+          el.textContent = randomSymbol();
+          t += 60;
+        }, 60);
+        spinIntervalIds.push(id);
+      });
+
+      // after 'duration' ms, stop all and set to the winning combination
+      setTimeout(()=>{
+        // clear intervals
+        spinIntervalIds.forEach(id=>clearInterval(id));
+        spinIntervalIds = [];
+        // Rig the result: make it look random while landing as a win
+        // We'll display a small random pause between reels stopping for drama
+        const stops = [200, 450, 700];
+        stops.forEach((pause, idx)=>{
+          setTimeout(()=>{
+            // To appear slightly different make the first two show a non-winning, then replace with winning
+            if(idx < 2){
+              reelEls[idx].textContent = randomSymbol();
+              // tiny flash to look like it's about to stop
+              setTimeout(()=>{ reelEls[idx].textContent = winningSymbol; }, 140);
+            } else {
+              // final reel lands on winningSymbol
+              reelEls[idx].textContent = winningSymbol;
+            }
+            if(idx === stops.length-1){
+              // show win
+              onWin();
+              spinning = false;
+              if(auto){ setTimeout(()=>startSpin(), 900); }
+            }
+          }, pause);
+        });
+      }, duration);
+    }
+
+    function onWin(){
+      // Show win UI
+      winbox.style.display = 'block';
+      runConfetti();
+    }
+
+    function startSpin(){ animateReels(); }
+
+    spinBtn.addEventListener('click', ()=>{
+      if(spinning) return; startSpin();
+    });
+
+    autoBtn.addEventListener('click', ()=>{
+      auto = !auto; autoBtn.textContent = auto ? 'Auto-spin: ON' : 'Auto-spin';
+      if(auto && !spinning) startSpin();
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      auto = false; autoBtn.textContent = 'Auto-spin';
+      winbox.style.display = 'none';
+      reelEls.forEach(el=>el.textContent = randomSymbol());
+    });
+
+    copyBtn.addEventListener('click', ()=>{
+      navigator.clipboard?.writeText(promo.textContent).then(()=>{
+        copyBtn.textContent = 'Copied!';
+        setTimeout(()=>copyBtn.textContent='Copy code',900);
+      }).catch(()=>{ copyBtn.textContent='Copy'; });
+    });
+
+    shopBtn.addEventListener('click', ()=>{
+      // replace with your handlooms collection link
+      window.open('https://example.com/handlooms','_blank');
+    });
+
+    // small confetti (vanilla) — lightweight
+    function runConfetti(){
+      const canvas = document.getElementById('confetti');
+      const ctx = canvas.getContext('2d');
+      canvas.style.display='block';
+      canvas.width = window.innerWidth; canvas.height = 220;
+      const pieces = [];
+      for(let i=0;i<40;i++){
+        pieces.push({x:Math.random()*canvas.width, y:Math.random()*(canvas.height-200)-20, vy:2+Math.random()*4, size:6+Math.random()*8, rot:Math.random()*360, vr:1-2*Math.random()});
+      }
+      let frames=0;
+      function frame(){
+        frames++;ctx.clearRect(0,0,canvas.width,canvas.height);
+        pieces.forEach(p=>{
+          p.y += p.vy; p.rot += p.vr; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+            ctx.fillStyle = `rgba(245,158,11,${0.8 - Math.min(0.7,p.y/600)})`;
+          ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+        ctx.restore();
+        });
+        if(frames < 120) requestAnimationFrame(frame); else { canvas.style.display='none'; }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    // initialize
+    reelEls.forEach(el=>el.textContent = randomSymbol());
+
+    // Accessibility: allow spacebar to spin when focus is on the document
+    document.addEventListener('keydown',(e)=>{ if(e.code==='Space'){ e.preventDefault(); if(!spinning) startSpin(); } });
+  </script></body>
+</html>
